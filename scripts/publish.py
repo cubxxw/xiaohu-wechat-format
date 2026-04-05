@@ -221,10 +221,31 @@ def list_albums(token):
 
 def resolve_album_id(token, album_arg):
     """将 --album 参数解析为 album_id。
-    由于微信 API 暂不支持获取合集列表，目前只接受直接传入 album_id。
+    优先从 config.json[albums] 按名称查找；找不到则直接当作 album_id 使用。
     """
-    # 看起来像 ID（纯字母数字）直接使用，不做远程验证
-    print(f"  ℹ️  将使用 album_id={album_arg}（无法通过 API 验证是否存在，请确认 ID 正确）")
+    albums_cfg = CONFIG.get("albums", {})
+
+    # 精确名称匹配（区分大小写）
+    if album_arg in albums_cfg:
+        aid = albums_cfg[album_arg]
+        print(f"  ✓ 合集「{album_arg}」→ album_id={aid}")
+        return aid
+
+    # 不区分大小写模糊匹配
+    lower = album_arg.lower()
+    matched = {k: v for k, v in albums_cfg.items() if lower in k.lower()}
+    if len(matched) == 1:
+        name, aid = next(iter(matched.items()))
+        print(f"  ✓ 合集「{name}」→ album_id={aid}")
+        return aid
+    elif len(matched) > 1:
+        print(f"错误: '{album_arg}' 匹配到多个合集，请使用更精确的名称：")
+        for k, v in matched.items():
+            print(f"    - {k}  (id={v})")
+        return None
+
+    # 当作裸 album_id 直接使用
+    print(f"  ℹ️  直接使用 album_id={album_arg}（不在 config.json[albums] 中）")
     return album_arg
 
 
