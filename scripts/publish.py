@@ -416,7 +416,19 @@ def main():
         html = article_path.read_text(encoding="utf-8")
 
     # ── 3. 提取标题 ──────────────────────────────────────────────────
-    title = args.title or extract_title_from_html(html) or article_dir.name
+    # 优先级: --title 参数 > HTML h1 > 源文件 front matter > 目录名
+    fm_title = None
+    if args.input:
+        try:
+            src = Path(args.input).read_text(encoding="utf-8")
+            m = re.search(r"^---\s*\n(.*?)\n---", src, re.DOTALL)
+            if m:
+                t = re.search(r"^title:\s*['\"]?(.*?)['\"]?\s*$", m.group(1), re.MULTILINE)
+                if t:
+                    fm_title = t.group(1).strip()
+        except Exception:
+            pass
+    title = args.title or extract_title_from_html(html) or fm_title or article_dir.name
     author = args.author
     print(f"标题: {title}")
     print(f"作者: {author}")
